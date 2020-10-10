@@ -1,0 +1,6 @@
+image:
+  file: .gitpod.Dockerfile
+
+tasks:
+  - init: 'echo "Nothing to init yet"'
+    command: 'echo "Nothing to start"'
