@@ -10,40 +10,77 @@ const VERSION = "0.1.0";
 HEADERS_NO_AUTH = { 'User-Agent': `${APP_NAME}-app/${VERSION}` };
 
 
-const entry_id = 221782;
-
+const TESTING_ENTRY_ID = 221782;
 const TESTING_COMMENT_ID = 4263642;
 
-let comment_ids = new Array(3);
+let comment_ids = new Array(100);
 comment_ids.fill(TESTING_COMMENT_ID) // actually should be array of different ids
 
-let request_url_template = (comment_id) => `${API_URL}/entry/${entry_id}/comments/thread/${comment_id}`;
 
 /**
- * Get comment from 221782 entry by id
- * @param {number} comment_id
- * @returns {Object} dict with comment content
+ * Return URL for requesting comment from entry
+ * @param {number} entry_id 
+ * @param {number} comment_id 
  */
-async function get_comment(comment_id) {
-    const request_url = request_url_template(comment_id);
+let request_comment_url_template = 
+    (entry_id, comment_id) => `${API_URL}/entry/${entry_id}/comments/thread/${comment_id}`;
+
+
+/**
+ * Suspend thread for a little
+ * @param {number} t time in msec
+ */
+const sleep = (t) => ({ then: (r) => setTimeout(r, t) })
+
+
+/**
+ * Get comment from entry by id
+ * @param {number} entry_id
+ * @param {number} comment_id
+ * @param {number} max_retry_count max count of retry to get message. Detault 10.
+ * @returns {string} empty string if comment was not received otherwise html text of comment.
+ */
+async function get_comment(entry_id, comment_id, max_retry_count = 10) {
+    const request_url = request_comment_url_template(entry_id, comment_id);
     console.log(`Request: ${request_url}.`);
 
+    // Await return respoce obj + Optional[json]
     let get_resp_json = () => fetch(request_url, { headers: HEADERS_NO_AUTH })
-        .then(res => res.ok ? res : Promise.reject(res))
-        .then(response => response.json());
+        .then(resp => resp.ok ? resp : Promise.reject([resp, {}]))
+        .then(response => Promise.all([response, response.json()]));
 
-    let first_comment = await get_resp_json()
-        .then(json => json["result"]["items"][0])
-        .catch(function (error) {
-            console.log("Request failed!")
-            return {}
-        });
+    for (let retry_count = 0; retry_count < max_retry_count; retry_count++) {
+        const [first_comment, status] = await get_resp_json()
+            .then(result => {
+                const [resp, json] = result;
+                return [json["result"]["items"][0], resp.status];
+            })
+            .catch(function (bad_result) {
+                const [resp, _] = bad_result;
+                console.log(`Request "${request_url}" failed!`);
+                return [{}, resp.status];
+            });
 
-    return first_comment;
+        // Too many requests
+        if (status == 429) {
+            await sleep(1000);
+            console.log(`Retry ${retry_count}: ${request_url}...`)
+            continue;
+        }
+        else if (status != 200) {
+            return ""
+        }
+
+        console.log(`Success "${request_url}"!`)
+        return first_comment.html;
+    }
+
+    console.log(`Request "${request_url}" was not received!`)
+    return "";
 }
 
 (async () => {
-    let tasks = comment_ids.map(async (val) => { return get_comment(val) })
+    let tasks = comment_ids.map(async (id) => { return get_comment(TESTING_ENTRY_ID, id) })
     const comments = await Promise.all(tasks)
 
     console.log(comments)
