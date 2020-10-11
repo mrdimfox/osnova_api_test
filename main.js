@@ -22,7 +22,7 @@ comment_ids.fill(TESTING_COMMENT_ID) // actually should be array of different id
  * @param {number} entry_id 
  * @param {number} comment_id 
  */
-let request_comment_url_template = 
+let request_comment_url_template =
     (entry_id, comment_id) => `${API_URL}/entry/${entry_id}/comments/thread/${comment_id}`;
 
 
@@ -31,6 +31,25 @@ let request_comment_url_template =
  * @param {number} t time in msec
  */
 const sleep = (t) => ({ then: (r) => setTimeout(r, t) })
+
+
+function extract_comments_form_dom(comment_elem_class) {
+    const comment_elems = document.querySelectorAll(".comments__item")
+
+    let hidden_comment_elems = Array.from(comment_elems).filter(element => {
+        // Check only first child to ignore all answers
+        return element.children[0].querySelector(".comments__item__self--ignored");
+    });
+
+    let comments = hidden_comment_elems.map((element) => {
+        return [
+            element.dataset.id,
+            element
+        ]
+    });
+
+    return comments;
+}
 
 
 /**
@@ -77,6 +96,16 @@ async function get_comment(entry_id, comment_id, max_retry_count = 10) {
 
     console.log(`Request "${request_url}" was not received!`)
     return "";
+}
+
+async function replace_hidden_comment(elem) {
+    let [element, id] = elem;
+
+    let comment = await get_comment(TESTING_ENTRY_ID, id);
+    if (comment) {
+        text = element.children[0].querySelector(".comments__item__text");
+        element.innerHtml = text
+    }
 }
 
 (async () => {
