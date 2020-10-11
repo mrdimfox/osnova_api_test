@@ -4,7 +4,8 @@ from pprint import pprint
 from typing import Sequence, Any
 
 API_TOKEN = ''
-API_URL_BASE = 'https://api.digitalocean.com/v2/'
+API_VER = "1.8"
+API_URL = f'https://api.tjournal.ru/v{API_VER}'
 
 APP_NAME = 'DimenteriosFoxTestApp'
 VERSION = "0.1.0"
@@ -12,10 +13,6 @@ VERSION = "0.1.0"
 HEADERS = {'User-Agent':f'{APP_NAME}-app/{VERSION}',
            'X-Device-Token': '{0}'.format(API_TOKEN)}
 HEADERS_NO_AUTH = {'User-Agent':f'{APP_NAME}-app/{VERSION}'}
-
-
-API_VER = "1.8"
-API_URL = f'https://api.tjournal.ru/v{API_VER}'
 
 def _first(seq: Sequence[Any]):
     return seq[0]
